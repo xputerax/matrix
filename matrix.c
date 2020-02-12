@@ -1,66 +1,49 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// #ifndef MATRIX_H
-// #define MATRIX_H 1
-// #endif
-
-// typedef struct {
-//     float value;
-// } Element;
-
-typedef float Element;
-
-// typedef struct {
-//     int num_elements;
-//     float *elements;
-// } Row;
-
-// typedef struct {
-//     int num_elements;
-//     float *elements;
-// } Column;
+typedef float Element_t;
 
 typedef struct {
-    const int num_rows;
-    const int num_columns;
-    const int is_square;
-    float *elements;
-    // Row *rows;
-} Matrix;
-
-typedef struct {
-    int column;
-    int row;
+    const int column;
+    const int row;
 } Order_t;
 
-// int num_rows(Matrix *A)
-// {
-//     return *A->num_rows;
-// }
+typedef struct {
+    const Order_t *order;
+    const int is_square;
+    const int num_elements;
+    Element_t *elements;
+} Matrix_t;
 
-Matrix *create_matrix(int num_rows, int num_columns)
+Order_t *create_order(int num_rows, int num_columns)
 {
-    Matrix *A = malloc(sizeof(Element) * num_columns * num_rows);
+    Order_t *order = malloc(sizeof(Order_t));
+    *(int *)&order->row = num_rows;
+    *(int *)&order->column = num_columns;
 
-    // *A = (Matrix) { .num_columns = num_columns, .num_rows = num_rows, .is_square = (num_columns == num_rows) };
-
-    *(int *)&A->num_rows = num_rows;
-    *(int *)&A->num_columns = num_columns;
-    *(int *)&A->is_square = (num_columns == num_columns);
-
-    A->elements = malloc(sizeof(Element) * num_rows * num_columns);
-
-    return A;
+    return order;
 }
 
-int is_same_order_matrix(Matrix *A, Matrix *B)
+Matrix_t *create_matrix(int num_rows, int num_columns)
 {
-    return (A->num_columns == B->num_columns)
-        && (A->num_rows == B->num_rows);
+    Matrix_t *matrix = malloc(sizeof(Matrix_t));
+    Order_t *order = create_order(num_rows, num_columns);
+
+    matrix->order = (Order_t *) order;
+    *(int *)&matrix->is_square = (num_columns == num_rows);
+    *(int *)&matrix->num_elements = num_rows * num_columns;
+    matrix->elements = (Element_t *) malloc(sizeof(Element_t) * matrix->num_elements);
+
+    return matrix;
 }
 
-void check_same_order_matrix(Matrix *A, Matrix *B)
+int is_same_order_matrix(Matrix_t *A, Matrix_t *B)
+{
+    return (A->order->column == B->order->column)
+        && (A->order->row == B->order->row);
+}
+
+void check_same_order_matrix(Matrix_t *A, Matrix_t *B)
 {
     if (!is_same_order_matrix(A, B)) {
         printf("%p and %p are not of the same order.\n", A, B);
@@ -68,78 +51,74 @@ void check_same_order_matrix(Matrix *A, Matrix *B)
     }
 }
 
-void fill_matrix(Element *source, Matrix *sink)
+void fill_matrix(Element_t *source, Matrix_t *sink)
 {
-    // check_same_order_matrix(source, sink);
-
     int i, j;
 
-    for (i=0; i<sink->num_rows; i++) {
-        for (j=0; j<sink->num_columns; j++) {
-            *(sink->elements + i*(sink->num_columns) + j) = *(source + i*(sink->num_columns) + j);
+    for (i=0; i<sink->order->row; i++) {
+        for (j=0; j<sink->order->column; j++) {
+            *(sink->elements + i*(sink->order->column) + j) = *(source + i*(sink->order->column) + j);
         }
     }
 }
 
-void print_matrix(Matrix *A)
+void print_matrix(Matrix_t *A)
 {
     int i, j;
 
-    for (i=0; i<A->num_rows; i++) {
+    for (i=0; i<A->order->row; i++) {
         printf("|");
-        for (j=0; j<A->num_columns; j++) {
-            printf("%5.2f", *(A->elements + i*(A->num_columns) + j));
+        for (j=0; j<A->order->column; j++) {
+            printf("%5.2f", *(A->elements + i*(A->order->column) + j));
         }
         printf(" |\n");
     }
 }
 
-Matrix *get_row(Matrix *A, int row)
+Matrix_t *get_row(Matrix_t *A, int row)
 {
-    if (row < 1 || row > A->num_rows) {
-        printf("row must not be bigger than matrix height.\n");
+    if (row < 1 || row > A->order->row) {
+        printf("invalid row number\n");
         return NULL;
     }
 
-    Matrix *output = create_matrix(1, A->num_columns);
+    Matrix_t *output = create_matrix(1, A->order->column);
 
-    int offset = (row-1)*(A->num_columns);
+    int offset = (row-1)*(A->order->column);
     int col;
 
-    for (col=0; col<A->num_columns; col++) {
+    for (col=0; col<A->order->column; col++) {
         *(output->elements + col) = *(A->elements + offset + col);
     }
 
     return output;
 }
 
-Matrix *get_column(Matrix *A, int column) // user input column=1,2,3 | real column = 0,1,2
+Matrix_t *get_column(Matrix_t *A, int column) // user input column=1,2,3 | real column = 0,1,2
 {
-    if (column < 1 || column > A->num_columns) {
-        printf("column must not be bigger than matrix width.\n");
+    if (column < 1 || column > A->order->column) {
+        printf("invalid column number\n");
         return NULL;
     }
 
-    Matrix *output = create_matrix(A->num_rows, 1);
+    Matrix_t *output = create_matrix(A->order->row, 1);
 
     int offset = (column-1);
     int row;
 
-    for (row=0; row<A->num_rows; row++) {
-        *(output->elements + row) = *(A->elements + offset + row*(A->num_columns));
+    for (row=0; row<A->order->row; row++) {
+        *(output->elements + row) = *(A->elements + offset + row*(A->order->column));
     }
 
     return output;
 }
 
-Matrix *add_matrix(Matrix *A, Matrix *B, Matrix *C)
+Matrix_t *add_matrix(Matrix_t *A, Matrix_t *B, Matrix_t *C)
 {
     check_same_order_matrix(A, B);
 
-    int total_elements = A->num_columns * A->num_rows;
     int i;
-
-    for (i = 0; i<total_elements; i++) {
+    for (i = 0; i<A->num_elements; i++) {
         *(C->elements + i) = *(A->elements + i) + *(B->elements + i);
     }
 
@@ -147,47 +126,43 @@ Matrix *add_matrix(Matrix *A, Matrix *B, Matrix *C)
 }
 
 // B = scalar * A
-Matrix *scalar_product(Matrix *A, Matrix *B, float scalar)
+Matrix_t *scalar_product(Matrix_t *A, Matrix_t *B, float scalar)
 {
     check_same_order_matrix(A, B);
 
-    int total_elements = A->num_columns * A->num_rows;
-
     int i;
-    for (i=0; i<total_elements; i++) {
+    for (i=0; i<A->num_elements; i++) {
         *(B->elements + i) = *(A->elements + i) * scalar;
     }
 
     return B;
 }
 
-Matrix *subtract_matrix(Matrix *A, Matrix *B, Matrix *C)
+// A - B = C
+Matrix_t *subtract_matrix(Matrix_t *A, Matrix_t *B, Matrix_t *C)
 {
     check_same_order_matrix(A, B);
-
-    Matrix *negativeB = create_matrix(A->num_rows, A->num_columns);
-
-    scalar_product(B, negativeB, -1);
-
-    add_matrix(A, negativeB, C);
-
-    free(negativeB);
+    
+    int i;
+    for (i = 0; i<A->num_elements; i++) {
+        *(C->elements + i) = *(A->elements + i) - *(B->elements + i);
+    }
 
     return C;
 }
 
-Order_t *get_matrix_product_order(Matrix *A, Matrix *B)
+Order_t *get_matrix_product_order(Matrix_t *A, Matrix_t *B)
 {
     Order_t *order = malloc(sizeof(Order_t));
-    order->row = A->num_rows;
-    order->column = B->num_columns;
+    *(int *)&order->row = A->order->row;
+    *(int *)&order->column = B->order->column;
 
     return order;
 }
 
-Matrix *matrix_product(Matrix *A, Matrix *B, Matrix *C)
+Matrix_t *matrix_product(Matrix_t *A, Matrix_t *B, Matrix_t *C)
 {
-    if (A->num_columns != B->num_rows) {
+    if (A->order->column != B->order->row) {
         printf("Column of matrix A does not match row of matrix B");
         return C;
     }
@@ -199,18 +174,18 @@ Matrix *matrix_product(Matrix *A, Matrix *B, Matrix *C)
 
     new_width = order->column;
 
-    for (rowA = 1; rowA<=A->num_rows; rowA++)
+    for (rowA = 1; rowA<=A->order->row; rowA++)
     {
-        Matrix *row = create_matrix(1, A->num_columns);
+        Matrix_t *row = create_matrix(1, A->order->column);
         row = get_row(A, rowA);
         
-        for (colB = 1; colB<=B->num_columns; colB++) {
-            Matrix *column = create_matrix(B->num_rows, 1);
+        for (colB = 1; colB<=B->order->column; colB++) {
+            Matrix_t *column = create_matrix(B->order->row, 1);
             column = get_column(B, colB);
 
             // dot product
             int i;
-            for (i=0; i<row->num_columns; i++) {
+            for (i=0; i<row->order->column; i++) {
                 part_value = *(row->elements + i) * *(column->elements + i);
                 col_value += part_value;
             }
@@ -226,15 +201,15 @@ Matrix *matrix_product(Matrix *A, Matrix *B, Matrix *C)
     return C;
 }
 
-Matrix *transpose_matrix(Matrix *A, Matrix *AT)
+Matrix_t *transpose_matrix(Matrix_t *A, Matrix_t *AT)
 {
     int old_row, old_column, new_row, new_column;
 
-    int old_width = A->num_columns;
-    int new_width = A->num_rows;
+    int old_width = A->order->column;
+    int new_width = A->order->row;
 
-    for (old_row=0; old_row<A->num_rows; old_row++) {
-        for (old_column=0; old_column<A->num_columns; old_column++) {
+    for (old_row=0; old_row<A->order->row; old_row++) {
+        for (old_column=0; old_column<A->order->column; old_column++) {
             
             new_row = old_column;
             new_column = old_row;
@@ -247,66 +222,7 @@ Matrix *transpose_matrix(Matrix *A, Matrix *AT)
     return AT;
 }
 
-float det_matrix(Matrix *A)
+float det_matrix(Matrix_t *A)
 {
     return 0.00;
-}
-
-int main()
-{
-    // 4*3
-    Element list[] = {
-        1,2,3,
-        4,5,6,
-        7,8,9,
-        10,11,12
-    };
-
-    // 3x3
-    Element list1[] = {
-        0,1,2,
-        3,4,5,
-        6,7,8
-    };
-
-    Matrix *A = create_matrix(4, 3);
-    Matrix *B = create_matrix(3, 3);
-
-    fill_matrix(list, A);
-    fill_matrix(list1, B);
-
-    Matrix *row = get_row(A, 4);
-    Matrix *col = get_column(A, 3);
-
-    // print_matrix(row);
-
-    // print_matrix(col);
-
-    Order_t *order = get_matrix_product_order(A, B);
-    Matrix *output = create_matrix(order->row, order->column);
-
-    // output->num_rows = 100;
-
-    // scalar_product(A, output, 2);
-
-    matrix_product(A, B, output);
-
-    print_matrix(output);
-
-    // Matrix *column = get_column(A, 2);
-
-    // print_matrix(column);
-
-    // Matrix *row = get_row(A, 2);
-
-    // print_matrix(row);
-
-    // print_matrix(col);
-
-    // fill_matrix(list1, B);
-
-    // Matrix *C = create_matrix(2,2);
-
-    
-    return 0;
 }
