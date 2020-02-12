@@ -69,7 +69,7 @@ void print_matrix(Matrix_t *A)
     for (i=0; i<A->order->row; i++) {
         printf("|");
         for (j=0; j<A->order->column; j++) {
-            printf("%5.2f", *(A->elements + i*(A->order->column) + j));
+            printf("%10.2f", *(A->elements + i*(A->order->column) + j));
         }
         printf(" |\n");
     }
@@ -176,12 +176,10 @@ Matrix_t *matrix_product(Matrix_t *A, Matrix_t *B, Matrix_t *C)
 
     for (rowA = 1; rowA<=A->order->row; rowA++)
     {
-        Matrix_t *row = create_matrix(1, A->order->column);
-        row = get_row(A, rowA);
+        Matrix_t *row = get_row(A, rowA);
         
         for (colB = 1; colB<=B->order->column; colB++) {
-            Matrix_t *column = create_matrix(B->order->row, 1);
-            column = get_column(B, colB);
+            Matrix_t *column = get_column(B, colB);
 
             // dot product
             int i;
