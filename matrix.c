@@ -104,13 +104,10 @@ Matrix *get_row(Matrix *A, int row)
     Matrix *output = create_matrix(1, A->num_columns);
 
     int offset = (row-1)*(A->num_columns);
-
-    A->elements += offset;
-
     int col;
 
     for (col=0; col<A->num_columns; col++) {
-        *(output->elements + col) = *(A->elements + col);
+        *(output->elements + col) = *(A->elements + offset + col);
     }
 
     return output;
@@ -123,16 +120,13 @@ Matrix *get_column(Matrix *A, int column) // user input column=1,2,3 | real colu
         return NULL;
     }
 
-    Matrix *output = create_matrix(1, A->num_rows);
+    Matrix *output = create_matrix(A->num_rows, 1);
 
     int offset = (column-1);
-
-    A->elements += offset;
-
     int row;
 
     for (row=0; row<A->num_rows; row++) {
-        *(output->elements + row) = *(A->elements + row*(A->num_columns));
+        *(output->elements + row) = *(A->elements + offset + row*(A->num_columns));
     }
 
     return output;
@@ -142,14 +136,11 @@ Matrix *add_matrix(Matrix *A, Matrix *B, Matrix *C)
 {
     check_same_order_matrix(A, B);
 
-    int i, j;
-    // Element *a = A->elements[0];
-    // Element, *b = A->elements[0];
+    int total_elements = A->num_columns * A->num_rows;
+    int i;
 
-    for (i=0; i<A->num_rows; i++) {
-        for (j=0; j<A->num_columns; j++) {
-            *(C->elements + i*(A->num_columns) + j) = *(A->elements + i*(A->num_columns) + j) + *(B->elements + i*(A->num_columns) + j);
-        }
+    for (i = 0; i<total_elements; i++) {
+        *(C->elements + i) = *(A->elements + i) + *(B->elements + i);
     }
 
     return C;
@@ -160,17 +151,15 @@ Matrix *scalar_product(Matrix *A, Matrix *B, float scalar)
 {
     check_same_order_matrix(A, B);
 
-    int i, j;
+    int total_elements = A->num_columns * A->num_rows;
 
-    for (i=0; i<A->num_rows; i++) {
-        for (j=0; j<A->num_columns; j++) {
-            *(B->elements + i*(A->num_columns) + j) = *(A->elements + i*(A->num_columns) + j) * scalar;
-        }
+    int i;
+    for (i=0; i<total_elements; i++) {
+        *(B->elements + i) = *(A->elements + i) * scalar;
     }
 
     return B;
 }
-
 
 Matrix *subtract_matrix(Matrix *A, Matrix *B, Matrix *C)
 {
@@ -198,39 +187,41 @@ Order_t *get_matrix_product_order(Matrix *A, Matrix *B)
 
 Matrix *matrix_product(Matrix *A, Matrix *B, Matrix *C)
 {
-
     if (A->num_columns != B->num_rows) {
         printf("Column of matrix A does not match row of matrix B");
         return C;
     }
 
-    int rowA, colA, rowB, colB, new_width;
+    int rowA, colB, new_width;
+    float col_value = 0.00, part_value = 0.00;
 
     Order_t *order = get_matrix_product_order(A, B);
 
-    // A= x * y
-    // B= y * z
-    // C = x * z
-    float col_value, part_value;
-
     new_width = order->column;
 
-    for (rowA=0; rowA<A->num_rows; rowA++) {
-        for (colB=0; colB<B->num_columns; colB) {
-            for (colA=0; colA<A->num_columns; colA++) {
-                for (rowB=0; rowB<B->num_rows; rowB++) {
-                    if (colA != colB) continue;
-                    part_value = 0.00;
-                    col_value += part_value;
-                }
-                part_value = 0;
+    for (rowA = 1; rowA<=A->num_rows; rowA++)
+    {
+        Matrix *row = create_matrix(1, A->num_columns);
+        row = get_row(A, rowA);
+        
+        for (colB = 1; colB<=B->num_columns; colB++) {
+            Matrix *column = create_matrix(B->num_rows, 1);
+            column = get_column(B, colB);
+
+            // dot product
+            int i;
+            for (i=0; i<row->num_columns; i++) {
+                part_value = *(row->elements + i) * *(column->elements + i);
+                col_value += part_value;
             }
-            col_value = 0;
-            // *(C->elements + (rowA * new_width) + colB) = *(A->elements + rowA*(A->num_columns) + )
+
+            // store the dot product value
+            *(C->elements + (rowA-1)*(new_width) + (colB-1)) = col_value;
+
+            col_value = 0.00;
+            part_value = 0.00;
         }
     }
-
-    free(order);
 
     return C;
 }
@@ -263,21 +254,48 @@ float det_matrix(Matrix *A)
 
 int main()
 {
+    // 4*3
     Element list[] = {
         1,2,3,
-        4,5,6
+        4,5,6,
+        7,8,9,
+        10,11,12
     };
 
-    Element list1[] = {0,1,2,3,4,5};
+    // 3x3
+    Element list1[] = {
+        0,1,2,
+        3,4,5,
+        6,7,8
+    };
 
-    Matrix *A = create_matrix(2, 3);
-    Matrix *B = create_matrix(3, 2);
+    Matrix *A = create_matrix(4, 3);
+    Matrix *B = create_matrix(3, 3);
 
     fill_matrix(list, A);
+    fill_matrix(list1, B);
 
-    Matrix *column = get_column(A, 2);
+    Matrix *row = get_row(A, 4);
+    Matrix *col = get_column(A, 3);
 
-    print_matrix(column);
+    // print_matrix(row);
+
+    // print_matrix(col);
+
+    Order_t *order = get_matrix_product_order(A, B);
+    Matrix *output = create_matrix(order->row, order->column);
+
+    // output->num_rows = 100;
+
+    // scalar_product(A, output, 2);
+
+    matrix_product(A, B, output);
+
+    print_matrix(output);
+
+    // Matrix *column = get_column(A, 2);
+
+    // print_matrix(column);
 
     // Matrix *row = get_row(A, 2);
 
